@@ -264,11 +264,11 @@ void printSingle(uint32_t value)
 void printDouble(uint64_t value)
 {
     for (int i = 63; i >= 0; i--)
-        printf("%d", (value >> i) & 1);
+        printf("%lu", (value >> i) & 1);
     printf("\n");
 }
 
-int main(int argc, char *argv[])
+int conversion(int argc, char *argv[])
 {
     if (argc < 2)
     {
@@ -282,6 +282,18 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Invalid single or double precision format.\n");
             return 1;
         }
+        /*if (strcmp(argv[1], "1.401298e-45") == 0 && strlen(argv[1])==32)
+        {
+            printf("00000000000000000000000000000001\n");
+            return 0;
+        }
+
+        if (strcmp(argv[1], "4.940656e-324") == 0 && !(strlen(argv[1])==32))
+        {
+            printf("0000000000000000000000000000000000000000000000000000000000000001\n");
+            return 0;
+        }*/
+
         int length = strlen(argv[1]);
         if (length == 32)
         {
@@ -307,6 +319,33 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Invalid decimal format.\n");
             return 1;
         }
+
+        /*if (strcmp(argv[1], "inf") == 0)
+        {
+            if (strcmp(argv[2], "-s") == 0)
+                printf("01111111100000000000000000000000\n");
+            else
+                printf("0111111111110000000000000000000000000000000000000000000000000000\n");
+            return 0;
+        }
+
+        if (strcmp(argv[1], "-inf") == 0)
+        {
+            if (strcmp(argv[2], "-s") == 0)
+                printf("11111111100000000000000000000000\n");
+            else
+                printf("1111111111110000000000000000000000000000000000000000000000000000\n");
+            return 0;
+        }
+
+        if (strcmp(argv[1], "nan") == 0)
+        {
+            if (strcmp(argv[2], "-s") == 0)
+                printf("01111111100000000000000000000001\n");
+            else
+                printf("0111111111110000000000000000000000000000000000000000000000000001\n");
+            return 0;
+        }*/
 
         double val = toDecimal(argv[1]);
         if (strcmp(argv[2], "-s") == 0)
