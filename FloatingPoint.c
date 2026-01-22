@@ -566,9 +566,13 @@ void printDecimal(double v, int sig)
         
         for (int k = 0; k < sig - 1; k++)
         {
-            d = (int)m;
+            d = (int)(m + 0.5L);
+            if (d >= 10)
+            {
+                d = 9;
+            }
             buf[idx++] = '0' + d;
-            m = (m - d) * 10.0L;
+            m = (m - (int)m) * 10.0L;
         }
         
         // remove trailing zeros
