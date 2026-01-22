@@ -485,7 +485,37 @@ void printDouble(uint64_t v)
     putchar('\n');
 }
 
-// prints decimal value, sig figs specified
+// helper function to print int wo float formatting
+void printInt(long long n)
+{
+    if (n == 0)
+    {
+        putchar('0');
+        return;
+    }
+    
+    if (n < 0)
+    {
+        putchar('-');
+        n = -n;
+    }
+    
+    // digits added in reverse order
+    char buf[32];
+    int i = 0;
+    while (n > 0)
+    {
+        buf[i++] = '0' + (n % 10);
+        n /= 10;
+    }
+    
+    // print digits
+    for (int j = i - 1; j >= 0; j--)
+    {
+        putchar(buf[j]);
+    }
+}
+
 void printDecimal(double v, int sig)
 {
     // special cases
@@ -526,75 +556,146 @@ void printDecimal(double v, int sig)
 
     double absv = fabs(v);
     
-    // check if need scientific notation
-    if (absv >= 1e10 || (absv > 0 && absv < 1e-9))
+    // check if scientific notation is needed
+    if (absv >= 1e10 || absv <= 1e-10)
     {        
-        int sign = 0;
-        if (v < 0)
+        int sign = (v < 0) ? 1 : 0;
+        v = fabs(v);
+        
+        // get each part
+        int exp;
+        double mantissa;
+        
+        // very small numbers
+        if (absv < 1e-14)
         {
-            sign = 1;
-        }
-        
-        double val = v;
-        if (sign)
-        {
-            val = -v;
-        }
-        
-        char buf[128];
-        
-        // long double for better precision
-        long double ldval = (long double)val;
-        
-        // calculate exponent
-        int exp10 = (int)floorl(log10l(ldval));
-        
-        // get mantissa
-        long double m = ldval / powl(10.0L, exp10);
-        
-        int idx = 0;
-        
-        if (sign)
-        {
-            buf[idx++] = '-';
-        }
-        
-        int d = (int)m;
-        buf[idx++] = '0' + d;
-        buf[idx++] = '.';
-        m = (m - d) * 10.0L;
-        
-        for (int k = 0; k < sig - 1; k++)
-        {
-            d = (int)(m + 0.5L);
-            if (d >= 10)
+            // scale up
+            double scaled = v;
+            exp = 0;
+            
+            while (scaled < 1.0 && exp > -400)
             {
-                d = 9;
+                scaled *= 10.0;
+                exp--;
             }
-            buf[idx++] = '0' + d;
-            m = (m - (int)m) * 10.0L;
+            
+            mantissa = scaled;
+        }
+        else
+        {
+            exp = (int)floor(log10(v));
+            mantissa = v / pow(10.0, exp);
+        }
+        
+        // sig figs
+        double scale = pow(10.0, sig - 1);
+        mantissa = round(mantissa * scale) / scale;
+        
+        // handle rounding
+        if (mantissa >= 10.0)
+        {
+            mantissa /= 10.0;
+            exp++;
+        }
+        
+        // if mantissa became 0, don't normalize further
+        if (mantissa == 0.0)
+        {
+            mantissa = 1.0;
+        }
+        
+        // buffer to remove trailing zeros
+        char buf[128];
+        int pos = 0;
+        
+        if (sign) buf[pos++] = '-';
+        
+        long long int_part = (long long)mantissa;
+        char intbuf[32];
+        int intlen = 0;
+        if (int_part == 0)
+        {
+            intbuf[intlen++] = '0';
+        }
+        else
+        {
+            long long temp = int_part;
+            while (temp > 0)
+            {
+                intbuf[intlen++] = '0' + (temp % 10);
+                temp /= 10;
+            }
+        }
+        // copy digits
+        for (int i = intlen - 1; i >= 0; i--)
+        {
+            buf[pos++] = intbuf[i];
+        }
+        
+        double frac = mantissa - int_part;
+        if (frac > 1e-15 && sig > 1)
+        {
+            buf[pos++] = '.';
+            for (int i = 1; i < sig; i++)
+            {
+                frac *= 10.0;
+                int digit = (int)frac;
+                buf[pos++] = '0' + digit;
+                frac -= digit;
+            }
         }
         
         // remove trailing zeros
-        while (idx > 0 && buf[idx - 1] == '0')
+        while (pos > 0 && buf[pos - 1] == '0')
         {
-            idx--;
+            pos--;
         }
         
-        // keep at least one digit after decimal point
-        if (idx > 0 && buf[idx - 1] == '.')
+        // keep one zero
+        if (pos > 0 && buf[pos - 1] == '.')
         {
-            buf[idx++] = '0';
+            buf[pos++] = '0';
         }
         
-        buf[idx++] = 'e';
-        sprintf(buf + idx, "%d", exp10);
+        // exponent part
+        buf[pos++] = 'e';
+        if (exp >= 0)
+        {
+            buf[pos++] = '+';
+        }
+        else
+        {
+            buf[pos++] = '-';
+            exp = -exp;
+        }
+        
+        char expbuf[16];
+        int explen = 0;
+        if (exp == 0)
+        {
+            expbuf[explen++] = '0';
+        }
+        else
+        {
+            int temp = exp;
+            while (temp > 0)
+            {
+                expbuf[explen++] = '0' + (temp % 10);
+                temp /= 10;
+            }
+        }
+        // copy digits
+        for (int i = explen - 1; i >= 0; i--)
+        {
+            buf[pos++] = expbuf[i];
+        }
+        
+        buf[pos] = '\0';
         puts(buf);
     }
     else
     {
-        // regular decimal notation
-        
+        //regular dec formatting
         int sign = 0;
         if (v < 0)
         {
@@ -602,30 +703,24 @@ void printDecimal(double v, int sig)
             v = -v;
         }
         
-        // check if basically integer
+        // split value
         double intpart;
         double fracpart = modf(v, &intpart);
         
-        // treat as integer
+        // check if fraction is negligible
         if (fabs(fracpart) < 1e-10 || fabs(fracpart - 1.0) < 1e-10)
         {
-            // print as integer with .0
-            if (sign)
-            {
-                printf("-");
-            }
-            printf("%.0f.0\n", round(v));
+            if (sign) putchar('-');
+            printInt((long long)round(v));
+            puts(".0");
             return;
         }
         
-        // not integer
-        char buf[256];
-        
-        // get num decimal places
+        // sig figs
         int exp10 = (int)floor(log10(v));
+        
         int decimal_places = sig - exp10 - 1;
         
-        // sanity
         if (decimal_places < 0)
         {
             decimal_places = 0;
@@ -635,31 +730,73 @@ void printDecimal(double v, int sig)
             decimal_places = 20;
         }
         
-        // format
-        if (sign)
+        // handle rounding
+        double scale = pow(10.0, decimal_places);
+        v = round(v * scale) / scale;
+        
+        modf(v, &intpart);
+        fracpart = v - intpart;
+        
+        // buffer to remove trailing zeros
+        char buf[256];
+        int pos = 0;
+        
+        if (sign) buf[pos++] = '-';
+        
+        long long intval = (long long)intpart;
+        char intbuf[32];
+        int intlen = 0;
+        if (intval == 0)
         {
-            sprintf(buf, "%.*f", decimal_places, -v);
+            intbuf[intlen++] = '0';
         }
         else
         {
-            sprintf(buf, "%.*f", decimal_places, v);
+            long long temp = intval;
+            while (temp > 0)
+            {
+                intbuf[intlen++] = '0' + (temp % 10);
+                temp /= 10;
+            }
+        }
+        // copy digits
+        for (int i = intlen - 1; i >= 0; i--)
+        {
+            buf[pos++] = intbuf[i];
+        }
+        
+        if (decimal_places > 0 && fabs(fracpart) > 1e-15)
+        {
+            buf[pos++] = '.';
+            
+            // print each digit
+            for (int i = 0; i < decimal_places; i++)
+            {
+                fracpart *= 10.0;
+                int digit = (int)fracpart;
+                buf[pos++] = '0' + digit;
+                fracpart -= digit;
+            }
+        }
+        else if (decimal_places > 0)
+        {
+            buf[pos++] = '.';
+            buf[pos++] = '0';
         }
         
         // remove trailing zeros
-        int len = strlen(buf);
-        while (len > 0 && buf[len - 1] == '0')
+        while (pos > 0 && buf[pos - 1] == '0')
         {
-            buf[len - 1] = '\0';
-            len--;
+            pos--;
         }
         
-        // if no dec, add .0
-        if (len > 0 && buf[len - 1] == '.')
+        // keep one zero
+        if (pos > 0 && buf[pos - 1] == '.')
         {
-            buf[len] = '0';
-            buf[len + 1] = '\0';
+            buf[pos++] = '0';
         }
         
+        buf[pos] = '\0';
         puts(buf);
     }
 }
