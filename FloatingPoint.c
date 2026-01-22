@@ -675,13 +675,13 @@ int conversion(int argc, char *argv[])
 
         if (strlen(argv[1]) == 32)
         {
-            // convert to decimal with 9 sig figs
-            printDecimal(SingleToDec(toSingle(argv[1])), 9);
+            // convert to decimal with 6 sig figs
+            printDecimal(SingleToDec(toSingle(argv[1])), 6);
         }
         else
         {
-            // convert to decimal with 17 sig figs
-            printDecimal(DoubleToDec(toDouble(argv[1])), 17);
+            // convert to decimal with 12 sig figs
+            printDecimal(DoubleToDec(toDouble(argv[1])), 12);
         }
 
         return 0;
@@ -722,4 +722,8 @@ int conversion(int argc, char *argv[])
     // wrong number of arguments
     fprintf(stderr, "Invalid number of arguments.\n");
     return 1;
+}
+
+int main(int argc, char *argv[]){
+    conversion(argc, argv);
 }
