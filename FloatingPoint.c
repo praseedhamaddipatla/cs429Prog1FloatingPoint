@@ -569,7 +569,6 @@ void printDecimal(double v, int sig)
         // very small numbers
         if (absv < 1e-14)
         {
-            // scale up
             double scaled = v;
             exp = 0;
             
@@ -587,29 +586,16 @@ void printDecimal(double v, int sig)
             mantissa = v / pow(10.0, exp);
         }
         
-        // sig figs
-        double scale = pow(10.0, sig - 1);
-        mantissa = round(mantissa * scale) / scale;
-        
-        // handle rounding
-        if (mantissa >= 10.0)
-        {
-            mantissa /= 10.0;
-            exp++;
-        }
-        
-        // if mantissa became 0, don't normalize further
-        if (mantissa == 0.0)
-        {
-            mantissa = 1.0;
-        }
-        
-        // buffer to remove trailing zeros
+        // buffer for output
         char buf[128];
         int pos = 0;
         
         if (sign) buf[pos++] = '-';
         
+        // extract digits
+        int digits_printed = 0;
+        
+        // print integer part
         long long int_part = (long long)mantissa;
         char intbuf[32];
         int intlen = 0;
@@ -630,33 +616,71 @@ void printDecimal(double v, int sig)
         for (int i = intlen - 1; i >= 0; i--)
         {
             buf[pos++] = intbuf[i];
+            digits_printed++;
         }
         
         double frac = mantissa - int_part;
-        if (frac > 1e-15 && sig > 1)
+        
+        // print fractional part
+        if (digits_printed < sig)
         {
             buf[pos++] = '.';
-            for (int i = 1; i < sig; i++)
+            
+            for (int i = digits_printed; i < sig; i++)
             {
                 frac *= 10.0;
                 int digit = (int)frac;
+                
+                // apply rounding on the last digit
+                if (i == sig - 1)
+                {
+                    double next_frac = (frac - digit) * 10.0;
+                    if (next_frac >= 5.0)
+                    {
+                        digit++;
+                        // handle carry
+                        if (digit >= 10)
+                        {
+                            // carry backwards
+                            digit = 0;
+                            int carry_pos = pos - 1;
+                            while (carry_pos >= 0)
+                            {
+                                if (buf[carry_pos] == '.')
+                                {
+                                    carry_pos--;
+                                    continue;
+                                }
+                                if (buf[carry_pos] == '9')
+                                {
+                                    buf[carry_pos] = '0';
+                                    carry_pos--;
+                                }
+                                else
+                                {
+                                    buf[carry_pos]++;
+                                    break;
+                                }
+                            }
+                            if (carry_pos < 0 || (carry_pos == 0 && sign))
+                            {
+                                int insert_pos = sign ? 1 : 0;
+                                for (int j = pos; j > insert_pos; j--)
+                                {
+                                    buf[j] = buf[j-1];
+                                }
+                                buf[insert_pos] = '1';
+                                pos++;
+                                exp++;
+                            }
+                        }
+                    }
+                }
+                
                 buf[pos++] = '0' + digit;
                 frac -= digit;
             }
         }
-        
-        // remove trailing zeros
-        while (pos > 0 && buf[pos - 1] == '0')
-        {
-            pos--;
-        }
-        
-        // keep one zero
-        if (pos > 0 && buf[pos - 1] == '.')
-        {
-            buf[pos++] = '0';
-        }
-        
         // exponent part
         buf[pos++] = 'e';
         if (exp >= 0)

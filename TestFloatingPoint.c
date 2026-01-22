@@ -168,7 +168,7 @@ void testSpecial()
         testHelper(s3, 2, "NaN\n", "NaN from single");
 
         char *s4[] = {"test", "00000000000000000000000000000001"};
-        testHelper(s4, 2, "1.40129e-45\n", "smallest denorm single");
+        testHelper(s4, 2, "1.40130e-45\n", "smallest denorm single");
 
         char *d1[] = {"test",
                       "0111111111110000000000000000000000000000000000000000000000000000"};
